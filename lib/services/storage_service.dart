@@ -149,4 +149,19 @@ class StorageService {
         _readRecords().where((BmiRecord r) => r.profileId != profileId).toList(growable: false);
     await _writeRecords(records);
   }
+
+  /// Deletes a profile and its associated records.
+  Future<void> deleteProfile(String profileId) async {
+    final List<UserProfile> profiles = _readProfiles()
+        .where((UserProfile p) => p.id != profileId)
+        .toList(growable: false);
+    await _writeProfiles(profiles);
+    await clearRecords(profileId);
+    final String? activeId = activeProfileId;
+    if (activeId == profileId && profiles.isNotEmpty) {
+      await setActiveProfileId(profiles.first.id);
+    } else if (profiles.isEmpty) {
+      await _prefs.remove(_activeIdKey);
+    }
+  }
 }

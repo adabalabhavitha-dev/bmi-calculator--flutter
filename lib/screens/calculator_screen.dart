@@ -8,7 +8,7 @@ import '../theme/app_theme.dart';
 import '../utils/bmi_calculator.dart';
 import 'result_screen.dart';
 
-/// Screen 2 — weight and height entry for the active profile.
+/// Screen 2 — weight and height entry for the active profile, with past readings.
 class CalculatorScreen extends StatefulWidget {
   const CalculatorScreen({
     super.key,
@@ -18,6 +18,7 @@ class CalculatorScreen extends StatefulWidget {
     required this.onProfilesChanged,
     required this.onAddUser,
     required this.onEditProfile,
+    required this.onDeleteUser,
   });
 
   final StorageService storage;
@@ -26,6 +27,7 @@ class CalculatorScreen extends StatefulWidget {
   final ValueChanged<UserProfile> onProfilesChanged;
   final VoidCallback onAddUser;
   final VoidCallback onEditProfile;
+  final VoidCallback onDeleteUser;
 
   @override
   State<CalculatorScreen> createState() => _CalculatorScreenState();
@@ -39,6 +41,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   String? _heightError;
   bool _calculating = false;
   bool _pressed = false;
+  List<BmiRecord> _history = const <BmiRecord>[];
+  bool _historyLoading = true;
+  bool _historyOpen = false;
 
   @override
   void initState() {
@@ -48,6 +53,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     _weightController.addListener(_onChanged);
     _heightController.addListener(_onChanged);
     _hydrate();
+    _loadHistory();
   }
 
   @override
@@ -55,6 +61,26 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.activeProfile.id != widget.activeProfile.id) {
       _hydrate();
+      _loadHistory();
+    }
+  }
+
+  Future<void> _loadHistory() async {
+    final List<BmiRecord> records =
+        await widget.storage.loadRecords(widget.activeProfile.id);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _history = records;
+      _historyLoading = false;
+    });
+  }
+
+  void _toggleHistory() {
+    setState(() => _historyOpen = !_historyOpen);
+    if (_historyOpen && _historyLoading) {
+      _loadHistory();
     }
   }
 
@@ -196,8 +222,9 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     if (!mounted) {
       return;
     }
-    // Pull the saved weight/height strings back in case anything changed upstream.
+    // Pull the saved weight/height strings back and refresh history.
     setState(_hydrate);
+    _loadHistory();
   }
 
   @override
@@ -224,6 +251,23 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                     onSwitch: widget.onProfilesChanged,
                     onAddUser: widget.onAddUser,
                     onEditProfile: widget.onEditProfile,
+                    onDeleteUser: widget.onDeleteUser,
+                    onToggleHistory: _toggleHistory,
+                    historyOpen: _historyOpen,
+                  ),
+                  AnimatedSize(
+                    duration: motionDuration(context, AppMotion.transition),
+                    curve: motionCurve(context, Curves.easeOutCubic),
+                    alignment: Alignment.topCenter,
+                    child: !_historyOpen
+                        ? const SizedBox.shrink()
+                        : Padding(
+                            padding: const EdgeInsets.only(top: AppSpace.md),
+                            child: _HistoryPanel(
+                              loading: _historyLoading,
+                              records: _history,
+                            ),
+                          ),
                   ),
                   const SizedBox(height: AppSpace.lg),
                   _FieldLabel(text: 'Weight'),
@@ -341,6 +385,9 @@ class _Header extends StatelessWidget {
     required this.onSwitch,
     required this.onAddUser,
     required this.onEditProfile,
+    required this.onDeleteUser,
+    required this.onToggleHistory,
+    required this.historyOpen,
   });
 
   final UserProfile profile;
@@ -348,15 +395,35 @@ class _Header extends StatelessWidget {
   final ValueChanged<UserProfile> onSwitch;
   final VoidCallback onAddUser;
   final VoidCallback onEditProfile;
+  final VoidCallback onDeleteUser;
+  final VoidCallback onToggleHistory;
+  final bool historyOpen;
 
   @override
   Widget build(BuildContext context) {
+    final bool canDelete = profiles.length > 1;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
+            Container(
+              width: 44,
+              height: 44,
+              margin: const EdgeInsets.only(right: AppSpace.sm),
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                boxShadow: cardShadow(),
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                child: Image.asset(
+                  'assets/images/app_icon.png',
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,6 +437,52 @@ class _Header extends StatelessWidget {
                 ],
               ),
             ),
+            Semantics(
+              button: true,
+              label: 'Past readings',
+              child: Ink(
+                decoration: BoxDecoration(
+                  color: historyOpen ? AppColors.accentTint : AppColors.surface,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  onPressed: onToggleHistory,
+                  icon: Icon(
+                    historyOpen ? Icons.history_toggle_off : Icons.history,
+                    size: 24,
+                  ),
+                  color: historyOpen ? AppColors.accent : AppColors.ink,
+                  tooltip: 'Past readings',
+                  constraints: const BoxConstraints(
+                    minWidth: AppSpace.touchTarget,
+                    minHeight: AppSpace.touchTarget,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpace.xs),
+            if (canDelete)
+              Semantics(
+                button: true,
+                label: 'Delete ${profile.name}',
+                child: Ink(
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    onPressed: onDeleteUser,
+                    icon: const Icon(Icons.delete_outline, size: 24),
+                    color: AppColors.tierOverweight,
+                    tooltip: 'Delete user',
+                    constraints: const BoxConstraints(
+                      minWidth: AppSpace.touchTarget,
+                      minHeight: AppSpace.touchTarget,
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(width: AppSpace.xs),
             Semantics(
               button: true,
               label: 'Edit profile for ${profile.name}',
@@ -557,5 +670,147 @@ class _Segment extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _HistoryPanel extends StatelessWidget {
+  const _HistoryPanel({required this.loading, required this.records});
+
+  final bool loading;
+  final List<BmiRecord> records;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.xs),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.all(Radius.circular(AppSpace.radiusCard)),
+        border: Border.all(color: AppColors.whisper.withValues(alpha: 0.5), width: 1),
+        boxShadow: cardShadow(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('PAST READINGS', style: text.labelLarge),
+          const SizedBox(height: AppSpace.xs),
+          if (loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpace.lg),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            )
+          else if (records.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
+              child: Text(
+                'No earlier readings for this profile yet.',
+                style: text.bodyMedium?.copyWith(color: AppColors.steel),
+              ),
+            )
+          else
+            ...List<Widget>.generate(records.length, (int index) {
+              final BmiRecord record = records[index];
+              final _HistoryRow row = _HistoryRow(
+                record: record,
+                color: _tierColor(record.classification),
+              );
+              return TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: 1),
+                duration: motionDuration(
+                  context,
+                  Duration(
+                    milliseconds: AppMotion.stagger.inMilliseconds * (index + 1) + 260,
+                  ),
+                ),
+                curve: motionCurve(context, Curves.easeOutCubic),
+                builder: (BuildContext context, double value, Widget? child) {
+                  return Opacity(
+                    opacity: value,
+                    child: Transform.translate(
+                      offset: Offset(0, 6 * (1 - value)),
+                      child: child,
+                    ),
+                  );
+                },
+                child: row,
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  static Color _tierColor(BmiClassification tier) {
+    switch (tier) {
+      case BmiClassification.underweight:
+        return AppColors.tierUnderweight;
+      case BmiClassification.normal:
+        return AppColors.tierNormal;
+      case BmiClassification.overweight:
+      case BmiClassification.obesity:
+        return AppColors.tierOverweight;
+    }
+  }
+}
+
+class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({required this.record, required this.color});
+
+  final BmiRecord record;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.whisper, width: 1)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Text(
+            _formatDate(record.createdAt),
+            style: text.labelSmall?.copyWith(color: AppColors.steel),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: AppSpace.xs),
+          Expanded(
+            child: Text(
+              record.classification.label,
+              style: text.bodySmall?.copyWith(color: AppColors.steel),
+            ),
+          ),
+          Text(
+            formatBmi(record.bmi),
+            style: text.labelSmall?.copyWith(color: AppColors.ink),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _formatDate(DateTime when) {
+    const List<String> months = <String>[
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${when.day} ${months[when.month - 1]} ${when.year}';
   }
 }

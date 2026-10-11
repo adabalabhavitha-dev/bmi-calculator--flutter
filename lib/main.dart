@@ -89,6 +89,23 @@ class _RootNavState extends State<RootNav> {
     });
   }
 
+  Future<void> _onDeleteUser() async {
+    if (_profiles.length <= 1) {
+      return; // Prevent deleting the last user
+    }
+    final String profileId = _active!.id;
+    await widget.storage.deleteProfile(profileId);
+    final List<UserProfile> profiles = await widget.storage.loadProfiles();
+    final UserProfile? active = widget.storage.loadActiveProfile();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _profiles = profiles;
+      _active = active;
+    });
+  }
+
   void _onProfilesChanged(UserProfile profile) {
     final int index = _profiles.indexWhere((UserProfile p) => p.id == profile.id);
     final List<UserProfile> next = _profiles.toList(growable: true);
@@ -126,6 +143,7 @@ class _RootNavState extends State<RootNav> {
       onProfilesChanged: _onProfilesChanged,
       onAddUser: () => _openOnboarding(),
       onEditProfile: () => _openOnboarding(existing: active),
+      onDeleteUser: _onDeleteUser,
     );
   }
 }
