@@ -125,6 +125,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
+                    if (!isEdit) ...<Widget>[
+                      Center(
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          margin: const EdgeInsets.only(bottom: AppSpace.md),
+                          decoration: BoxDecoration(
+                            borderRadius: const BorderRadius.all(Radius.circular(20)),
+                            boxShadow: cardShadow(),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.all(Radius.circular(20)),
+                            child: Image.asset(
+                              'assets/images/app_icon.png',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                     Text(
                       isEdit ? 'Update your details' : 'Set up your profile',
                       style: Theme.of(context).textTheme.headlineMedium,

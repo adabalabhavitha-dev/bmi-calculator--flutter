@@ -127,11 +127,10 @@ Material outlined only. 22–24px. Always inside a 44×44 touch target.
 1. **Onboarding / Profile** — name, gender (segmented), age. Reachable again to
    edit a profile or add a new user.
 2. **Calculator** — who's measuring (name + a wrapped row of profile chips, each
-   44px tall, ending in an *Add user* chip), weight, height with the cm/m
-   segmented control, and the Calculate action.
-3. **Result** — the number, the classification, the tier bar, and a history
-   icon in the app bar that opens past records (same screen, revealed section
-   or pushed route).
+   44px tall, ending in an *Add user* chip), a history icon in the header that
+   reveals past records, weight, height with the cm/m segmented control, and the
+   Calculate action.
+3. **Result** — the number, the classification, and the tier bar.
 
 The profile chips wrap onto the next line rather than scrolling sideways, so
 adding a user never requires a horizontal gesture. The row is always present —

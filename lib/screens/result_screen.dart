@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../models/bmi_record.dart';
 import '../models/user_profile.dart';
 import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/bmi_calculator.dart';
 
-/// Screen 3 — the readout, the classification, and the profile's history.
+/// Screen 3 — the readout and the classification.
 class ResultScreen extends StatefulWidget {
   const ResultScreen({
     super.key,
-    required this.storage,
+    this.storage,
     required this.profile,
     required this.bmi,
     required this.classification,
@@ -19,7 +18,7 @@ class ResultScreen extends StatefulWidget {
     required this.createdAt,
   });
 
-  final StorageService storage;
+  final StorageService? storage;
   final UserProfile profile;
   final double bmi;
   final BmiClassification classification;
@@ -35,9 +34,6 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
   late final AnimationController _controller;
   late final Animation<double> _valueScale;
   late final Animation<double> _valueOpacity;
-  List<BmiRecord> _history = const <BmiRecord>[];
-  bool _historyLoading = true;
-  bool _historyOpen = false;
 
   @override
   void initState() {
@@ -53,31 +49,12 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
     _controller.forward();
-    _loadHistory();
-  }
-
-  Future<void> _loadHistory() async {
-    final List<BmiRecord> records = await widget.storage.loadRecords(widget.profile.id);
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _history = records;
-      _historyLoading = false;
-    });
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
-  }
-
-  void _toggleHistory() {
-    setState(() => _historyOpen = !_historyOpen);
-    if (_historyOpen && _historyLoading) {
-      _loadHistory();
-    }
   }
 
   @override
@@ -94,26 +71,6 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: const Text('Result'),
-        actions: <Widget>[
-          Semantics(
-            button: true,
-            label: 'Past readings',
-            child: IconButton(
-              onPressed: _toggleHistory,
-              icon: Icon(
-                _historyOpen ? Icons.history_toggle_off : Icons.history,
-                size: 24,
-              ),
-              color: _historyOpen ? AppColors.accent : AppColors.ink,
-              tooltip: 'Past readings',
-              constraints: const BoxConstraints(
-                minWidth: AppSpace.touchTarget,
-                minHeight: AppSpace.touchTarget,
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpace.xs),
-        ],
       ),
       body: SafeArea(
         child: Center(
@@ -150,18 +107,6 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
                   Text(
                     classificationMessage(tier),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.steel),
-                  ),
-                  const SizedBox(height: AppSpace.lg),
-                  AnimatedSize(
-                    duration: motionDuration(context, AppMotion.transition),
-                    curve: motionCurve(context, Curves.easeOutCubic),
-                    alignment: Alignment.topCenter,
-                    child: !_historyOpen
-                        ? const SizedBox.shrink()
-                        : _HistoryPanel(
-                            loading: _historyLoading,
-                            records: _history,
-                          ),
                   ),
                 ],
               ),
@@ -428,135 +373,5 @@ class _TierBarState extends State<_TierBar> with SingleTickerProviderStateMixin 
         ),
       ],
     );
-  }
-}
-
-class _HistoryPanel extends StatelessWidget {
-  const _HistoryPanel({required this.loading, required this.records});
-
-  final bool loading;
-  final List<BmiRecord> records;
-
-  @override
-  Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.lg, AppSpace.lg, AppSpace.xs),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: const BorderRadius.all(Radius.circular(AppSpace.radiusCard)),
-        border: Border.all(color: AppColors.whisper.withValues(alpha: 0.5), width: 1),
-        boxShadow: cardShadow(),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text('PAST READINGS', style: text.labelLarge),
-          const SizedBox(height: AppSpace.xs),
-          if (loading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpace.lg),
-              child: Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            )
-          else if (records.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpace.md),
-              child: Text(
-                'No earlier readings for this profile yet.',
-                style: text.bodyMedium?.copyWith(color: AppColors.steel),
-              ),
-            )
-          else
-            ...List<Widget>.generate(records.length, (int index) {
-              final BmiRecord record = records[index];
-              final _HistoryRow row = _HistoryRow(
-                record: record,
-                color: _ResultScreenState._tierColor(record.classification),
-              );
-              return TweenAnimationBuilder<double>(
-                tween: Tween<double>(begin: 0, end: 1),
-                duration: motionDuration(
-                  context,
-                  Duration(
-                    milliseconds: AppMotion.stagger.inMilliseconds * (index + 1) + 260,
-                  ),
-                ),
-                curve: motionCurve(context, Curves.easeOutCubic),
-                builder: (BuildContext context, double value, Widget? child) {
-                  return Opacity(
-                    opacity: value,
-                    child: Transform.translate(
-                      offset: Offset(0, 6 * (1 - value)),
-                      child: child,
-                    ),
-                  );
-                },
-                child: row,
-              );
-            }),
-        ],
-      ),
-    );
-  }
-}
-
-class _HistoryRow extends StatelessWidget {
-  const _HistoryRow({required this.record, required this.color});
-
-  final BmiRecord record;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.whisper, width: 1)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: <Widget>[
-          Text(
-            _formatDate(record.createdAt),
-            style: text.labelSmall?.copyWith(color: AppColors.steel),
-          ),
-          const SizedBox(width: AppSpace.sm),
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: AppSpace.xs),
-          Expanded(
-            child: Text(
-              record.classification.label,
-              style: text.bodySmall?.copyWith(color: AppColors.steel),
-            ),
-          ),
-          Text(
-            formatBmi(record.bmi),
-            style: text.labelSmall?.copyWith(color: AppColors.ink),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _formatDate(DateTime when) {
-    const List<String> months = <String>[
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${when.day} ${months[when.month - 1]} ${when.year}';
   }
 }

@@ -406,12 +406,12 @@ class _Header extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             Container(
               width: 44,
               height: 44,
-              margin: const EdgeInsets.only(right: AppSpace.sm),
               decoration: BoxDecoration(
                 borderRadius: const BorderRadius.all(Radius.circular(12)),
                 boxShadow: cardShadow(),
@@ -424,86 +424,92 @@ class _Header extends StatelessWidget {
                 ),
               ),
             ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text('Measure', style: Theme.of(context).textTheme.headlineMedium),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Enter weight and height for ${profile.name}.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.steel),
-                  ),
-                ],
-              ),
-            ),
-            Semantics(
-              button: true,
-              label: 'Past readings',
-              child: Ink(
-                decoration: BoxDecoration(
-                  color: historyOpen ? AppColors.accentTint : AppColors.surface,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  onPressed: onToggleHistory,
-                  icon: Icon(
-                    historyOpen ? Icons.history_toggle_off : Icons.history,
-                    size: 24,
-                  ),
-                  color: historyOpen ? AppColors.accent : AppColors.ink,
-                  tooltip: 'Past readings',
-                  constraints: const BoxConstraints(
-                    minWidth: AppSpace.touchTarget,
-                    minHeight: AppSpace.touchTarget,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: AppSpace.xs),
-            if (canDelete)
-              Semantics(
-                button: true,
-                label: 'Delete ${profile.name}',
-                child: Ink(
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    onPressed: onDeleteUser,
-                    icon: const Icon(Icons.delete_outline, size: 24),
-                    color: AppColors.tierOverweight,
-                    tooltip: 'Delete user',
-                    constraints: const BoxConstraints(
-                      minWidth: AppSpace.touchTarget,
-                      minHeight: AppSpace.touchTarget,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Semantics(
+                  button: true,
+                  label: 'Past readings',
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: historyOpen ? AppColors.accentTint : AppColors.surface,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: onToggleHistory,
+                      icon: Icon(
+                        historyOpen ? Icons.history_toggle_off : Icons.history,
+                        size: 24,
+                      ),
+                      color: historyOpen ? AppColors.accent : AppColors.ink,
+                      tooltip: 'Past readings',
+                      constraints: const BoxConstraints(
+                        minWidth: AppSpace.touchTarget,
+                        minHeight: AppSpace.touchTarget,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            const SizedBox(width: AppSpace.xs),
-            Semantics(
-              button: true,
-              label: 'Edit profile for ${profile.name}',
-              child: Ink(
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  onPressed: onEditProfile,
-                  icon: const Icon(Icons.person_outline, size: 24),
-                  color: AppColors.ink,
-                  tooltip: 'Edit profile',
-                  constraints: const BoxConstraints(
-                    minWidth: AppSpace.touchTarget,
-                    minHeight: AppSpace.touchTarget,
+                if (canDelete) ...<Widget>[
+                  const SizedBox(width: AppSpace.xs),
+                  Semantics(
+                    button: true,
+                    label: 'Delete ${profile.name}',
+                    child: Ink(
+                      decoration: const BoxDecoration(
+                        color: AppColors.surface,
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        onPressed: onDeleteUser,
+                        icon: const Icon(Icons.delete_outline, size: 24),
+                        color: AppColors.tierOverweight,
+                        tooltip: 'Delete user',
+                        constraints: const BoxConstraints(
+                          minWidth: AppSpace.touchTarget,
+                          minHeight: AppSpace.touchTarget,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: AppSpace.xs),
+                Semantics(
+                  button: true,
+                  label: 'Edit profile for ${profile.name}',
+                  child: Ink(
+                    decoration: const BoxDecoration(
+                      color: AppColors.surface,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: onEditProfile,
+                      icon: const Icon(Icons.person_outline, size: 24),
+                      color: AppColors.ink,
+                      tooltip: 'Edit profile',
+                      constraints: const BoxConstraints(
+                        minWidth: AppSpace.touchTarget,
+                        minHeight: AppSpace.touchTarget,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ],
+        ),
+        const SizedBox(height: AppSpace.md),
+        Text(
+          'Measure',
+          style: Theme.of(context).textTheme.headlineMedium,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Enter weight and height for ${profile.name}.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.steel),
         ),
         const SizedBox(height: AppSpace.md),
         // Wraps rather than scrolls sideways: adding a user never needs a

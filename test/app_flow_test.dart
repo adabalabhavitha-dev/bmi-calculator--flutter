@@ -189,7 +189,7 @@ void main() {
   });
 
   group('history', () {
-    testWidgets('the history panel lists past readings for the profile',
+    testWidgets('the history panel lists past readings on the home screen',
         (WidgetTester tester) async {
       final StorageService storage = await _storageWithProfile();
       await storage.addRecord(
@@ -202,30 +202,36 @@ void main() {
       await tester.pumpWidget(BMIApp(storage: storage));
       await tester.pumpAndSettle();
 
+      // Home screen has the history button right away.
+      expect(find.byType(CalculatorScreen), findsOneWidget);
+      final Finder history = find.byTooltip('Past readings');
+      expect(history, findsOneWidget);
+
+      await tester.tap(history);
+      await tester.pumpAndSettle();
+
+      expect(find.text('PAST READINGS'), findsOneWidget);
+      expect(find.text('26.1'), findsOneWidget);
+      expect(find.text('Overweight'), findsOneWidget); // row label
+      expect(await storage.loadRecords('u_1'), hasLength(2));
+
+      // And the panel closes again.
+      await tester.tap(history);
+      await tester.pumpAndSettle();
+      expect(find.text('PAST READINGS'), findsNothing);
+
+      // Calculating BMI navigates to ResultScreen.
       final Finder calculate = find.widgetWithText(FilledButton, 'Calculate');
       await tester.ensureVisible(calculate);
       await tester.tap(calculate);
       await tester.pumpAndSettle();
 
       expect(find.byType(ResultScreen), findsOneWidget);
-
-      final Finder history = find.byTooltip('Past readings');
-      await tester.ensureVisible(history);
-      await tester.tap(history);
-      await tester.pumpAndSettle();
-
-      expect(find.text('PAST READINGS'), findsOneWidget);
-      expect(find.text('26.1'), findsOneWidget);
-      expect(find.text('Overweight'), findsNWidgets(2)); // legend + row
-      expect(await storage.loadRecords('u_1'), hasLength(3));
-
-      // And the panel closes again.
-      await tester.tap(find.byTooltip('Past readings'));
-      await tester.pumpAndSettle();
-      expect(find.text('PAST READINGS'), findsNothing);
+      // History button is removed after calculating BMI.
+      expect(find.byTooltip('Past readings'), findsNothing);
     });
 
-    testWidgets('history is scoped to the active profile',
+    testWidgets('history is scoped to the active profile on the home screen',
         (WidgetTester tester) async {
       final StorageService storage = await _storageWithProfile();
       await storage.saveProfile(
@@ -245,21 +251,24 @@ void main() {
       await tester.pumpWidget(BMIApp(storage: storage));
       await tester.pumpAndSettle();
 
-      final Finder calculate = find.widgetWithText(FilledButton, 'Calculate');
-      await tester.ensureVisible(calculate);
-      await tester.tap(calculate);
-      await tester.pumpAndSettle();
+      expect(find.byType(CalculatorScreen), findsOneWidget);
 
-      // Ravi is the active profile here, so the readout is his own 72.5 / 172.
-      expect(find.text('24.5'), findsOneWidget);
-      expect(find.text('29.4'), findsNothing);
-
+      // Ravi is the active profile; opening history shows only his readings.
       await tester.tap(find.byTooltip('Past readings'));
       await tester.pumpAndSettle();
       expect(find.text('PAST READINGS'), findsOneWidget);
-      // Meera's reading stays in her own history.
       expect(find.text('29.4'), findsNothing);
-      expect(await storage.loadRecords('u_1'), hasLength(1));
+
+      // Switch to Meera Shah.
+      await tester.tap(find.text('Meera Shah'));
+      await tester.pumpAndSettle();
+
+      // Meera's reading is accessible in her history.
+      await tester.tap(find.byTooltip('Past readings'));
+      await tester.pumpAndSettle();
+      expect(find.text('PAST READINGS'), findsOneWidget);
+      expect(find.text('29.4'), findsOneWidget);
+      expect(await storage.loadRecords('u_1'), isEmpty);
       expect(await storage.loadRecords('u_2'), hasLength(1));
     });
   });
